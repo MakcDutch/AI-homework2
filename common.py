@@ -254,3 +254,23 @@ def draw_frame(ax, root, split, key, gt=True, preds=None, score_thr=0.3, title=N
                 ax.add_patch(patches.Rectangle((x, y), w, h, fill=False, lw=1, ls="--", edgecolor="white"))
     ax.set_title(title or key, fontsize=9)
     ax.axis("off")
+
+
+def worst_frames(preds, root, split="val", n=3, score_thr=0.3):
+    """Frames (one per clip) with the largest gap between GT objects and confident predictions."""
+    _, anns = load_coco_frames(root, split)
+    n_gt = anns[anns["iscrowd"] == 0].groupby("key").size()
+    n_pred = pd.Series({k: int((v[:, 1] >= score_thr).sum()) for k, v in preds.items()}, dtype=float)
+    gap = (n_gt - n_pred.reindex(n_gt.index).fillna(0)).sort_values(ascending=False)
+    keys = gap.groupby(gap.index.str.split("/").str[0]).head(1).index[:n]
+    return [(k, int(n_gt[k]), int(n_pred.get(k, 0))) for k in keys]
+
+
+def show_failures(preds, root, out_png, split="val", n=3, score_thr=0.3):
+    import matplotlib.pyplot as plt
+    cases = worst_frames(preds, root, split, n, score_thr)
+    fig, axes = plt.subplots(len(cases), 1, figsize=(14, 5 * len(cases)))
+    for ax, (key, g, p) in zip(np.atleast_1d(axes), cases):
+        draw_frame(ax, root, split, key, preds=preds, score_thr=score_thr, title=f"{key}: {g} GT, {p} predicted (score >= {score_thr})")
+    plt.tight_layout(); plt.savefig(out_png, dpi=100); plt.show()
+    return cases
