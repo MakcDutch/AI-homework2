@@ -116,6 +116,8 @@ def wbf_ensemble(pred_list, weights, sizes, iou_thr=0.55, skip_box_thr=0.001, to
             a = p.get(key, np.zeros((0, 6)))
             a = a[np.argsort(-a[:, 1])][:top_k]
             b = np.c_[a[:, 2] / W, a[:, 3] / H, (a[:, 2] + a[:, 4]) / W, (a[:, 3] + a[:, 5]) / H].clip(0, 1)
+            ok = (b[:, 2] > b[:, 0]) & (b[:, 3] > b[:, 1])  # boxes lying outside the frame become empty after clipping
+            a, b = a[ok], b[ok]
             boxes.append(b.tolist()); scores.append(a[:, 1].tolist()); labels.append(a[:, 0].tolist())
         b, s, l = weighted_boxes_fusion(boxes, scores, labels, weights=weights, iou_thr=iou_thr, skip_box_thr=skip_box_thr)
         if len(b):

@@ -220,8 +220,8 @@ def results_table(path="results.csv", row=None):
     """Appends one experiment row to a CSV log and returns the whole log."""
     df = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
     if row is not None:
-        df = pd.concat([df[df.get("exp", pd.Series(dtype=str)) != row["exp"]] if len(df) else df,
-                        pd.DataFrame([row])], ignore_index=True)
+        parts = [df[df["exp"] != row["exp"]]] if len(df) else []
+        df = pd.concat([p for p in parts if len(p)] + [pd.DataFrame([row])], ignore_index=True)
         df.to_csv(path, index=False)
     return df
 
